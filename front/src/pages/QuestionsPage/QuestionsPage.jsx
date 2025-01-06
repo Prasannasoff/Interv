@@ -46,14 +46,15 @@ function QuestionsPage() {
           setAskq(true);
           setLoading(false);
         }
+      }
+      else {
+        setQnaArray((prevQnaArray) => {
+          const updatedQnaArray = [...prevQnaArray];
+          updatedQnaArray[dom_count] = questionsAndAnswers; // Add to the appropriate domain index
+          return updatedQnaArray;
+        });
 
-        else {
-          const updatedQnaArray = [...qnaArray];
-          updatedQnaArray[dom_count] = questionsAndAnswers;
-          console.log(updatedQnaArray[dom_count]);
-          setQnaArray(updatedQnaArray);
-          setLoading(false);
-        }
+
       }
     });
 
@@ -78,13 +79,31 @@ function QuestionsPage() {
       socket.off('generationComplete');
       socket.off('error');
     };
-  }, [askq, dom_count]);
+  }, [dom_count, qnaArray]);
+  useEffect(() => {
+    // Check if Q&A for the current domain (dom_count) is available after qnaArray updates
+    console.log("Count", dom_count);
+    console.log("ARRAY", qnaArray[dom_count]);
+    if (qnaArray[dom_count]) {
+      console.log("QNA found for dom_count:", dom_count);
+      setSetOfQuestions(qnaArray[dom_count]);
+      setAskq(true); // Start asking questions for the current domain
+      setLoading(false); // Stop loading spinner
+    }
+    else if (dom_count==0) {
+      // If Q&A data for this domain is still missing but there are more domains to check
+      setLoading(false); // Continue showing loading spinner until data is received
+    } else {
+      // If there are no more domains or no data available
+      setLoading(true);
+    }
+  }, [dom_count, qnaArray]);
 
   useEffect(() => {
     if (askq && setOfQuestions.length > 0) {
       setAnswer('');
       setTranscript('');
-      setMicOn(false)
+      setMicOn(false);
       setTimeLeft(20);
       const timer = setInterval(() => {
         setTimeLeft((prev) => prev - 1);
@@ -102,6 +121,33 @@ function QuestionsPage() {
     }
   }, [qindex, askq, setOfQuestions.length]);
 
+  const processQuestionsAndAnswers = (qaString) => {
+    const qaArray = qaString.split('\n\n').map((item) => {
+      const questionAnswer = item.split('\n');
+      return {
+        question: questionAnswer[0]?.replace(/^\d+\.\s*Question:\s*/, '').trim(), // Remove "1. Question:" from the question
+        reference_answer: questionAnswer[1]?.replace('Answer:', '').trim(), // Remove "Answer:" from the answer
+      };
+    });
+    return qaArray;
+  };
+
+
+  const handlePushToNode = () => {
+    const skillsToProcess = resumeData.matched_skills;
+    const domain = resumeData.mapped_domain[dom_count];
+    setLoading(true);
+    socket.emit('generateQuestions', { inp: domain, Domain: resumeData.mapped_domain, Skills: skillsToProcess });
+  };
+
+  const handlenextDomain = () => {
+    console.log('Switching to next domain');
+    setLoading(true); // Start loading
+    setdom_count(dom_count + 1);  // Move to next domain
+    console.log('New dom_count:', dom_count + 1);
+    setAskq(false);  // Reset asking questions state
+  };
+
 
   const submitAnswer = () => {
     const updatedQuestions = [...setOfQuestions];
@@ -114,7 +160,6 @@ function QuestionsPage() {
     console.log("QINDEX", qindex);
     if (qindex < setOfQuestions.length - 1) {
       setQindex(qindex + 1);
-
       setAnswer('');
       setTranscript('');
     } else {
@@ -219,35 +264,7 @@ function QuestionsPage() {
   };
   // When receiving data from Flask, process the Q&A
 
-  const processQuestionsAndAnswers = (qaString) => {
-    const qaArray = qaString.split('\n\n').map((item) => {
-      const questionAnswer = item.split('\n');
-      return {
-        question: questionAnswer[0]?.replace(/^\d+\.\s*Question:\s*/, '').trim(), // Remove "1. Question:" from the question
-        reference_answer: questionAnswer[1]?.replace('Answer:', '').trim(), // Remove "Answer:" from the answer
-      };
-    });
-    return qaArray;
-  };
 
-
-  const handlePushToNode = () => {
-    const skillsToProcess = resumeData.matched_skills;
-    const domain = resumeData.mapped_domain[dom_count];
-    setLoading(true);
-    socket.emit('generateQuestions', { inp: domain, Domain: resumeData.mapped_domain, Skills: skillsToProcess });
-  };
-
-  const handlenextDomain = () => {
-    setLoading(true);
-    const nextQNA = qnaArray[dom_count];
-
-    setSetOfQuestions(nextQNA);
-    setAskq(true);
-    setLoading(false);
-    setdom_count(dom_count + 1);
-
-  };
   return (
     <div className={styles.uploadPage}>
       <h1 className={styles.heading}>Interview Question</h1>

@@ -237,8 +237,10 @@ def generate():
     stderr=subprocess.PIPE,
     encoding='utf-8',
     text=True,
-    timeout=60
+    timeout=120
 )
+        print(f"Stdout: {result.stdout}")
+        print(f"Stderr: {result.stderr}")
 
 
         # Check if the process completed successfully
@@ -257,8 +259,8 @@ def generate():
         print(f"Ollama process timed out for skill '{skill}'")
         return jsonify({"error": f"Processing timed out for skill '{skill}'"}), 500
     except Exception as e:
-        print(f"Error generating Q&A for skill '{skill}': {e}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error generating Q&A for skill '{skill}': {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
  
 
