@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import styles from './QuestionsPage.module.css';
 import { ResumeContext } from '../Context/ResumeContext';
@@ -17,14 +17,15 @@ function QuestionsPage() {
   const [askq, setAskq] = useState(false);
   const [qindex, setQindex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(90);
-  const [dom_count, setdom_count] = useState(0);
+  const [dom_count, setdom_count] = useState(-1);
   const [loading, setLoading] = useState(false);
   const [final_dom, setfinal_dom] = useState('');
+  const [loadingFromNextDomain, setLoadingFromNextDomain] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [qnaArray, setQnaArray] = useState([]); // Store all QNA for each skill (indexed by dom_count)
-
+  const countRef = useRef(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,23 +40,20 @@ function QuestionsPage() {
       const qaString = qna[0]; // Extract the qna string
       const questionsAndAnswers = processQuestionsAndAnswers(qaString);
       console.log("QBA", questionsAndAnswers)
-      if (dom_count === 0) {
-        // Directly display questions for the first skill
-        if (!askq) {
-          setSetOfQuestions(questionsAndAnswers);
-          setAskq(true);
-          setLoading(false);
+
+      setQnaArray(prevArray => {
+        // Find the first empty slot in the array
+        let nextIndex = 0;
+        while (nextIndex < prevArray.length && prevArray[nextIndex] !== undefined) {
+          nextIndex++;
         }
-      }
-      else {
-        setQnaArray((prevQnaArray) => {
-          const updatedQnaArray = [...prevQnaArray];
-          updatedQnaArray[dom_count] = questionsAndAnswers; // Add to the appropriate domain index
-          return updatedQnaArray;
-        });
 
+        const newArray = [...prevArray];
+        newArray[nextIndex] = questionsAndAnswers;
 
-      }
+        // Remove any undefined gaps and empty slots
+        return newArray.filter(item => item !== undefined && item !== null);
+      });
     });
 
     socket.on('qnaStatus', ({ skill, message }) => {
@@ -79,23 +77,27 @@ function QuestionsPage() {
       socket.off('generationComplete');
       socket.off('error');
     };
-  }, [dom_count, qnaArray]);
+  }, []);
   useEffect(() => {
-    // Check if Q&A for the current domain (dom_count) is available after qnaArray updates
     console.log("Count", dom_count);
+    console.log("arrays::", qnaArray);
     console.log("ARRAY", qnaArray[dom_count]);
-    if (qnaArray[dom_count]) {
-      console.log("QNA found for dom_count:", dom_count);
-      setSetOfQuestions(qnaArray[dom_count]);
-      setAskq(true); // Start asking questions for the current domain
-      setLoading(false); // Stop loading spinner
-    }
-    else if (dom_count==0) {
-      // If Q&A data for this domain is still missing but there are more domains to check
-      setLoading(false); // Continue showing loading spinner until data is received
-    } else {
-      // If there are no more domains or no data available
-      setLoading(true);
+    // Check if Q&A for the current domain (dom_count) is available after qnaArray updates
+    if (loadingFromNextDomain) {
+
+      if (qnaArray[dom_count]) {
+        console.log("QNA found for dom_count:", dom_count);
+        setSetOfQuestions(qnaArray[dom_count]);
+        setAskq(true);
+        setLoading(false); // Stop loading spinner
+      }
+      else {
+        // If there are no more domains or no data available
+        setLoading(true);
+      }
+      if (qnaArray[dom_count]) {
+        setLoadingFromNextDomain(false);
+      }
     }
   }, [dom_count, qnaArray]);
 
@@ -136,6 +138,8 @@ function QuestionsPage() {
   const handlePushToNode = () => {
     const skillsToProcess = resumeData.matched_skills;
     const domain = resumeData.mapped_domain[dom_count];
+    setdom_count(dom_count + 1);
+    setLoadingFromNextDomain(true);
     setLoading(true);
     socket.emit('generateQuestions', { inp: domain, Domain: resumeData.mapped_domain, Skills: skillsToProcess });
   };
@@ -144,6 +148,7 @@ function QuestionsPage() {
     console.log('Switching to next domain');
     setLoading(true); // Start loading
     setdom_count(dom_count + 1);  // Move to next domain
+    setLoadingFromNextDomain(true);
     console.log('New dom_count:', dom_count + 1);
     setAskq(false);  // Reset asking questions state
   };
