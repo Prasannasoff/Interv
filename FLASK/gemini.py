@@ -225,7 +225,8 @@ def generate():
     # Generate questions and answers using LLaMA (Ollama)
     try:
         # Proper usage of ollama CLI
-        llama_prompt = f"Generate 3 questions and answers from the paragraph '{skill}'. Only return the questions and answers in the following format: \n1. Question: [question] \n   Answer: [answer] \n2. Question: [question] \n   Answer: [answer] \n3. Question: [question] \n   Answer: [answer]. Do not include any introductory text or extra symbols."
+        llama_prompt = f"Generate 5 questions and answers from the paragraph '{skill}'.Frame meaningful and most important questions and answers. Don't add any introductory sentence like here are few questions . Only return the questions and answers in the following format: \n1. Question: [question] \n   Answer: [answer] \n2. Question: [question] \n   Answer: [answer] \n3. Question: [question] \n   Answer: [answer]. Do not include any introductory text or extra symbols."
+
 
         print(f"Prompt being sent to Ollama: {llama_prompt}")
         

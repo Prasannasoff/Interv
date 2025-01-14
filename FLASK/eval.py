@@ -8,12 +8,12 @@ from nltk.corpus import stopwords
 from collections import Counter
 import numpy as np
 from functools import lru_cache
-
+from flask_cors import CORS
 # Download NLTK stopwords
 nltk.download('stopwords')
 
 app = Flask(__name__)
-
+CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}}, supports_credentials=True)
 # Define stop words and negation words
 stop_words = set(stopwords.words('english'))
 negation_words = {"not", "n't", "no", "never"}

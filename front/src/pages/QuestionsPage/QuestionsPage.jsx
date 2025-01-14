@@ -18,6 +18,7 @@ function QuestionsPage() {
   const [qindex, setQindex] = useState(0);
   const [timeLeft, setTimeLeft] = useState(90);
   const [dom_count, setdom_count] = useState(-1);
+  const [startState, setStartState] = useState(true);
   const [loading, setLoading] = useState(false);
   const [final_dom, setfinal_dom] = useState('');
   const [loadingFromNextDomain, setLoadingFromNextDomain] = useState(false);
@@ -142,6 +143,7 @@ function QuestionsPage() {
     setLoadingFromNextDomain(true);
     setLoading(true);
     socket.emit('generateQuestions', { inp: domain, Domain: resumeData.mapped_domain, Skills: skillsToProcess });
+    setStartState(false);
   };
 
   const handlenextDomain = () => {
@@ -245,11 +247,11 @@ function QuestionsPage() {
       setLoading(true);
       console.log('In Evaluate');
       console.log(setOfQuestions);
-      const res = await axios.post('http://localhost:5001/api/evaluate', { QandA: setOfQuestions });
+      const res = await axios.post('http://localhost:5003/evaluate', { QandA: setOfQuestions });
       console.log('Evaluation Result:', res.data);
-      const percentage1 = res.data.QandA_Eval.All_Average;
-      const percentageGem = res.data.QandA_Eval.Percentage_Gem;
-      const percentageSBert = res.data.QandA_Eval.Percentage_SBert;
+      const percentage1 = res.data.All_Average;
+      const percentageGem = res.data.Percentage_Gem;
+      const percentageSBert = res.data.Percentage_SBert;
 
       setEvalRes((prevEvalRes) => [
         ...prevEvalRes,
@@ -260,7 +262,7 @@ function QuestionsPage() {
           percentage_sbert: percentageSBert,
         },
       ]);
-      setdom_count(dom_count + 1);
+      // setdom_count(dom_count + 1);
       setLoading(false);
     } catch (error) {
       console.error('Error evaluating answers:', error);
@@ -322,21 +324,22 @@ function QuestionsPage() {
             <p>{askq ? 'No more questions available.' : 'Click the button to start.'}</p>
           )}
 
-          {resumeData && (
+          {resumeData && !askq && (
             <div className={styles.resultsContainer}>
               <h1>Question in Domain: {dom_count}</h1>
-              <button onClick={handlePushToNode} className={styles.Startbutton}>
-                Click To Start
-              </button>
-              <button onClick={handlenextDomain} className={styles.Startbutton}>
-                Go to Next Domain
-              </button>
-              <br />
-              <br />
-              <br />
-              <button onClick={handleEvaluate} className={styles.Evalbutton}>
-                Evaluate
-              </button>
+              {startState ?
+                <button onClick={handlePushToNode} className={styles.Startbutton}>
+                  Click To Start
+                </button> :
+                <>
+                  <button onClick={handlenextDomain} className={styles.Startbutton}>
+                    Go to Next Domain
+                  </button>
+                  <button onClick={handleEvaluate} className={styles.Evalbutton}>
+                    Evaluate
+                  </button>
+                </>
+              }
             </div>
           )}
         </>

@@ -9,6 +9,12 @@ load_dotenv()
 
 # Access the API key
 api_key = os.getenv("gemini_api_key")
+if not api_key:
+    raise ValueError("gemini_api_key is not set in the environment variables.")
+
+# Configure the genai library with the API key
+genai.configure(api_key=api_key)
+
 model = genai.GenerativeModel(model_name="gemini-1.5-flash")
 
 def evaluate_answer(reference_answer, candidate_answer, question):
