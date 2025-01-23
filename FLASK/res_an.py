@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, send_from_directory
 import fitz  # PyMuPDF
 import google.generativeai as genai
@@ -15,11 +16,30 @@ app = Flask(__name__)
 CORS(app)  
 
 domain_skills = {
-    'Computer Science': ["Python", "Java", "JavaScript", "SQL", "HTML", "CSS", "Django", "Flask", "React", "Node.js", "C", "C++", "Spring Boot", "Thymeleaf", "ProjectManagement", "ReactJS"],
+    'Computer Science': ["python", "java", "JavaScript", "SQL", "html", "CSS", "Django", "Flask", "Node.js", "c", "C++", "Spring Boot", "Thymeleaf", "ProjectManagement", "react","React Native"],
     'Electronics': ["Circuit Design", "Signal Processing", "Embedded Systems", "Analog Electronics", "Digital Electronics", "Communication Systems"],
     'Mechanical': ["Thermodynamics", "Fluid Mechanics", "Material Science", "Manufacturing Processes", "Dynamics", "Control Systems"],
     'Electrical': ["Power Systems", "Electrical Machines", "Control Systems", "Power Electronics", "Signal Processing", "Renewable Energy Systems"]
 }
+
+def get_gemini_matched_skills(resume_skills, domain):
+    # Get the predefined skills for the domain
+    domain_specific_skills = domain_skills.get(domain, [])
+    input_prompt_match = f"""
+    Based on the domain: {domain}, match the following domain-specific skills with the given resume skills. 
+    Domain-Specific Skills: {', '.join(domain_specific_skills)}
+    Resume Skills: {', '.join(resume_skills)}
+    
+    Provide only the matched skills as a comma-separated list. Do not include extra text or formatting.
+    """
+    response = get_gemini_response(input_prompt_match, "")
+    try:
+        # Split the response into a list of skills
+        matched_skills = [skill.strip().lower() for skill in response.split(',') if skill.strip()]
+        return matched_skills
+    except Exception as e:
+        print(f"Error parsing matched skills from Gemini: {e}")
+        return []
 
 def get_gemini_response(prompt, extracted_text):
     model = genai.GenerativeModel('gemini-1.5-flash')
@@ -83,7 +103,7 @@ def upload_resume():
     
     file = request.files['resume']
     extracted_text = extract_text_from_pdf(file)
-    print("Extracted Text:",extracted_text)
+    print("Extracted Text:", extracted_text)
 
     input_prompt_degree = """
     Get the domain mentioned in this resume like (BE Computer Science and Engineering or BE Electronics or BTECH IT) based on the data given. Don't add extra contents, just give me the actual degree with domain.
@@ -100,18 +120,20 @@ def upload_resume():
     resume_skills = extract_and_clean_skills(resume_skills_text)
 
     if domain and domain != "Unknown":
-        match_percentage, matching_skills = calculate_skill_match(domain, resume_skills)
+        # Use Gemini to get the matched skills
+        matched_skills = get_gemini_matched_skills(resume_skills, domain)
+        total_skills = len(domain_skills.get(domain, []))
+        match_percentage = (len(matched_skills) / total_skills) * 100 if total_skills > 0 else 0
     else:
-        match_percentage, matching_skills = 0, []
+        matched_skills, match_percentage = [], 0
 
     return jsonify({
         "skills": resume_skills,
         "domain": extracted_domain,
         "mapped_domain": domain,
-        "matched_skills": list(matching_skills),
+        "matched_skills": matched_skills,
         "match_percentage": int(match_percentage)
     })
-
 
 
 if __name__ == '__main__':

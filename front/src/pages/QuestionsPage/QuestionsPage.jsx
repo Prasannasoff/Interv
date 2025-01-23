@@ -269,7 +269,6 @@ function QuestionsPage() {
       alert('Error evaluating answers. Check console for details.');
     }
   };
-  // When receiving data from Flask, process the Q&A
 
 
   return (

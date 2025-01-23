@@ -212,25 +212,19 @@ app = Flask(__name__)
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
-    data = request.get_json()  # Retrieve JSON data sent by the Node.js server
+    data = request.get_json()
     print("Received data from Node.js:", data)
 
-    # # Extract the individual skill
-    # inp = data.get('inp', 'No input provided')
-    # domain = data.get('Domain', 'No domain provided')
+    
     skill = data.get('data', 'No skill provided')
 
     print(f"Processing skill: {skill}")
 
-    # Generate questions and answers using LLaMA (Ollama)
     try:
         # Proper usage of ollama CLI
         llama_prompt = f"Generate 5 questions and answers from the paragraph '{skill}'.Frame meaningful and most important questions and answers. Don't add any introductory sentence like here are few questions . Only return the questions and answers in the following format: \n1. Question: [question] \n   Answer: [answer] \n2. Question: [question] \n   Answer: [answer] \n3. Question: [question] \n   Answer: [answer]. Do not include any introductory text or extra symbols."
-
-
         print(f"Prompt being sent to Ollama: {llama_prompt}")
-        
-        # Run Ollama process
+    
         result = subprocess.run(
     [r'C:\Users\Prasanna\AppData\Local\Programs\Ollama\ollama.exe', 'run', 'llama3.1'],
     input=llama_prompt + "\n",
@@ -244,16 +238,14 @@ def generate():
         print(f"Stderr: {result.stderr}")
 
 
-        # Check if the process completed successfully
         if result.returncode != 0:
             print(f"Error running ollama: {result.stderr}")
             raise Exception(result.stderr.strip())
 
-        # Process the generated output
         questions_and_answers = result.stdout.strip()
         print(f"Generated Q&A for skill '{skill}': {questions_and_answers}")
 
-        # Return the generated questions and answers
+     
         return jsonify({"questions_and_answers": [questions_and_answers]})
 
     except subprocess.TimeoutExpired:
